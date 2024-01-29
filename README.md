@@ -6,12 +6,7 @@ Distributed Saturn tester as a Station module
 Install [Zinnia CLI](https://github.com/filecoin-station/zinnia).
 
 ```bash
-$ # Lint
-$ npx standard
-$ # Run module
 $ zinnia run main.js
-$ # Test module
-$ zinnia run test.js
 ```
 
 ## Release
