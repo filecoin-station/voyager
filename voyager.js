@@ -243,6 +243,8 @@ async function reportBandwidthLogs(opts, benchmarks) {
     const bandwidthLogs = benchmarks
         .filter(bm => bm.service === 'saturn' && !bm.isFromBrowserCache)
         .map(createBandwidthLog)
+    console.log('Reporting bandwidth logs...')
+    console.log(bandwidthLogs)
 
     if (bandwidthLogs.length) {
         await fetch(opts.logIngestorUrl, {
@@ -250,6 +252,8 @@ async function reportBandwidthLogs(opts, benchmarks) {
             body: JSON.stringify({ bandwidthLogs, logSender: 'voyager' }),
         })
     }
+
+    console.log('Bandwidth logs submitted')
 }
 
 function getWeightedRandomCid(cids) {
