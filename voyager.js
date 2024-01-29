@@ -97,7 +97,8 @@ async function benchmark(service, url, cid, format = null) {
     try {
         const opts = {
             cache: 'no-store',
-            headers: {}
+            headers: {},
+            signal: AbortSignal.timeout(60_000)
         }
 
         const res = await fetch(url, opts)
