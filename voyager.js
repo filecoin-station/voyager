@@ -4,30 +4,6 @@ import { extractVerifiedContent } from './vendor/saturn-js-client/dist/strn.min.
 import { ActivityState } from './lib/activity-state.js'
 import { cids as gatewayCids } from './lib/ipfs-gateway-cids.js'
 
-/**
- * Fetch API wrapper that throws on 400+ http status.
- *
- * @param {string|Request} resource
- * @param {object} opts - Fetch API options. Also accepts a 'timeout' number
- */
-async function wfetch (resource, opts = {}) {
-  if (Number.isFinite(opts.timeout)) {
-      const controller = new AbortController()
-      opts.signal = controller.signal
-      setTimeout(() => controller.abort(), opts.timeout)
-  }
-
-  const response = await fetch(resource, opts)
-
-  if (response.status >= 400) {
-      const error = new Error(response.statusText || response.status)
-      error.response = response
-      throw error
-  }
-
-  return response
-}
-
 const retrievalClientId = self.crypto.randomUUID()
 const activityState = new ActivityState()
 
