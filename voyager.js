@@ -31,10 +31,12 @@ export async function runSaturnBenchmarkInterval() {
     const random = Math.random()
     try {
         if (random <= prodOpts.sampleRate) {
+            console.log('Running prod benchmark...')
             await runBenchmark(prodOpts)
             Zinnia.jobCompleted()
         }
         if (random <= testOpts.sampleRate) {
+            console.log('Running test benchmark...')
             await runBenchmark(testOpts)
             Zinnia.jobCompleted()
         }
@@ -43,13 +45,14 @@ export async function runSaturnBenchmarkInterval() {
         console.error(err)
         activityState.onError()
     } finally {
-        console.error('Sleeping for 60s...')
+        console.log('Sleeping for 60s...')
         setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
     }
 }
 
 export async function runBenchmark(opts) {
     const { cid, cidPath } = getWeightedRandomCid(gatewayCids)
+    console.log(`Testing ${cid}${cidPath}...`)
     const format = 'car'
     const res = await benchmarkSaturn(opts, cid, cidPath, format)
     await reportBandwidthLogs(opts, [res])
@@ -119,6 +122,7 @@ async function benchmark(service, url, cid, format = null) {
             await readFlatFileResponse(res, bm)
         }
     } catch (err) {
+        console.error(err)
         bm.ifError = err.message
     } finally {
         bm.endTime = new Date()
