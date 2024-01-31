@@ -5,14 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: robinraju/release-downloader@v1.9
-        with:
-          latest: true
-          tarBall: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: curl -L https://api.github.com/repos/${{ github.repository }}/tarball/v0.1.0 > source.tar.gz
       - uses: filecoin-station/publish-zinnia-module-action@v0
         with:
-          source: v0.1.0.tar.gz
+          source: source.tar.gz
           w3up-private-key: ${{ secrets.W3UP_PRIVATE_KEY }}
           w3up-proof: ${{ secrets.W3UP_PROOF }}
           w3name-private-key: ${{ secrets.W3NAME_PRIVATE_KEY }}
