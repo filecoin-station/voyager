@@ -1,6 +1,6 @@
 import opentelemetry from './vendor/opentelemetry/api/out.js'
 import { BasicTracerProvider } from './vendor/opentelemetry/sdk-trace-base/out.js'
-import { extractVerifiedContent } from './vendor/saturn-js-client/dist/strn.min.js'
+import { extractVerifiedContent } from './vendor/saturn-js-client/dist/strn.js'
 import { ActivityState } from './lib/activity-state.js'
 import { cids as gatewayCids } from './lib/ipfs-gateway-cids.js'
 
