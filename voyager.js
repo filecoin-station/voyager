@@ -1,10 +1,8 @@
-import opentelemetry from './vendor/opentelemetry/api/out.js'
 import { BasicTracerProvider } from './vendor/opentelemetry/sdk-trace-base/out.js'
-import { extractVerifiedContent } from './vendor/saturn-js-client/dist/strn.js'
+import { Saturn, indexedDbStorage } from './vendor/saturn-js-client/dist/strn.js'
 import { ActivityState } from './lib/activity-state.js'
 import { cids as gatewayCids } from './lib/ipfs-gateway-cids.js'
 
-const retrievalClientId = self.crypto.randomUUID()
 const activityState = new ActivityState()
 
 // Example: https://ipfs.io/ipfs/${cid}
@@ -25,6 +23,27 @@ const testOpts = {
     sampleRate: 0.01
 }
 
+const prodSaturn = new Saturn({
+    cdnURL: prodOpts.saturnOrigin,
+    logURL: prodOpts.logIngestorUrl,
+    authURL: 'https://su4hesnyinnwvtk3h2rkauh5ja0qrisq.lambda-url.us-west-2.on.aws/',
+    storage: indexedDbStorage(),
+    logSender: 'voyager',
+    experimental: true,
+    clientKey: 'c11dbbe1-a007-4e59-86d5-fc67dc8f317c'
+})
+
+// test should use default memory storage so it doesn't overwrite prod storage.
+const testSaturn = new Saturn({
+    cdnURL: testOpts.saturnOrigin,
+    logURL: testOpts.logIngestorUrl,
+    authURL: 'https://fz3dyeyxmebszwhuiky7vggmsu0rlkoy.lambda-url.us-west-2.on.aws/',
+    orchURL: 'https://orchestrator.strn-test.pl/nodes?maxNodes=100',
+    logSender: 'voyager',
+    experimental: true,
+    clientKey: 'c536c9b9-81a1-4a98-8b05-61341e5dd77e',
+})
+
 new BasicTracerProvider().register()
 
 export async function runSaturnBenchmarkInterval() {
@@ -32,12 +51,12 @@ export async function runSaturnBenchmarkInterval() {
     try {
         if (random <= prodOpts.sampleRate) {
             console.log('Running prod benchmark...')
-            await runBenchmark(prodOpts)
+            await runBenchmark(prodSaturn)
             Zinnia.jobCompleted()
         }
         if (random <= testOpts.sampleRate) {
             console.log('Running test benchmark...')
-            await runBenchmark(testOpts)
+            await runBenchmark(testSaturn)
             Zinnia.jobCompleted()
         }
         activityState.onHealthy()
@@ -50,210 +69,31 @@ export async function runSaturnBenchmarkInterval() {
     }
 }
 
-export async function runBenchmark(opts) {
-    const { cid, cidPath } = getWeightedRandomCid(gatewayCids)
-    console.log(`Testing ${cid}${cidPath}...`)
-    const format = 'car'
-    const res = await benchmarkSaturn(opts, cid, cidPath, format)
-    await reportBandwidthLogs(opts, [res])
+export async function runBenchmark(saturn) {
+    const { cidPath } = getWeightedRandomCid(gatewayCids)
+    console.log(`Testing ${cidPath}...`)
+    return sendSaturnRequest(saturn, cidPath)
 }
 
-function benchmarkSaturn(opts, cid, cidPath, format) {
-    const saturnUrl = new URL(opts.saturnOrigin + cidPath)
-    saturnUrl.searchParams.set('clientId', retrievalClientId)
-    return benchmark('saturn', saturnUrl, cid, format)
-}
+async function sendSaturnRequest(saturn, cidPath) {
+    let { cidPath } = getWeightedRandomCid(cids)
 
-async function benchmark(service, url, cid, format = null) {
-    if (format) {
-        url.searchParams.set('format', format)
-        if (format === 'car') {
-            url.searchParams.set('dag-scope', 'entity')
+    const controller = new AbortController()
+    const fetchOpts = {
+        cache: 'no-store', // bypass browser cache
+        controller,
+        firstHitDNS: true
+    }
+
+    let numBytes = 0
+    const content = saturn.fetchContentWithFallback(cidPath, fetchOpts)
+
+    for await (const chunk of content) {
+        numBytes += chunk.length
+        if (numBytes > maxDownloadSize) {
+            controller.abort()
         }
     }
-
-    url.searchParams.delete('filename')
-
-    const bm = {
-        service,
-        cid,
-        url,
-        transferId: null,
-        httpStatusCode: null,
-        httpProtocol: null,
-        nodeId: null,
-        cacheStatus: null,
-        ttfb: null,
-        ttfbAfterDnsMs: null,
-        dnsTimeMs: null,
-        startTime: new Date(),
-        endTime: null,
-        transferSize: null,
-        ifError: null,
-        isDir: null,
-        traceparent: null,
-    }
-
-    try {
-        const opts = {
-            cache: 'no-store',
-            headers: {},
-            signal: AbortSignal.timeout(60_000)
-        }
-
-        const res = await fetch(url, opts)
-
-        const { headers } = res
-
-        bm.httpStatusCode = res.status
-        bm.cacheStatus = headers.get('saturn-cache-status') ?? headers.get('x-proxy-cache')
-        bm.nodeId = headers.get('saturn-node-id') ?? headers.get('x-ipfs-pop')
-        bm.transferId = headers.get('saturn-transfer-id') ?? headers.get('x-bfid')
-        bm.httpProtocol = headers.get('quic-status')
-        bm.transferSize = 0
-        bm.ttfb = new Date()
-
-        if (bm.transferId?.length === 32) {
-            bm.traceparent = createTraceParent(bm.transferId)
-        }
-
-        if (format === 'car') {
-            await readCARResponse(res, bm)
-        } else {
-            await readFlatFileResponse(res, bm)
-        }
-    } catch (err) {
-        console.error(err)
-        bm.ifError = err.message
-    } finally {
-        bm.endTime = new Date()
-    }
-
-    if (window.performance) {
-        const entry = performance.getEntriesByType('resource')
-            .find(r => r.name === url.href)
-        if (entry) {
-            const dnsStart = entry.domainLookupStart
-            const dnsEnd = entry.domainLookupEnd
-            const hasData = dnsEnd > 0 && dnsStart > 0
-            if (hasData) {
-                bm.dnsTimeMs = Math.round(dnsEnd - dnsStart)
-                bm.ttfbAfterDnsMs = Math.round(entry.responseStart - entry.requestStart)
-            }
-
-            if (bm.httpProtocol === null && entry.nextHopProtocol) {
-                bm.httpProtocol = entry.nextHopProtocol
-            }
-            // else response didn't have Timing-Allow-Origin: *
-            //
-            // if both dnsStart and dnsEnd are > 0 but have the same value,
-            // its a dns cache hit.
-
-            bm.isFromBrowserCache = (
-                entry.deliveryType === 'cache' ||
-                (bm.httpStatusCode && entry.transferSize === 0)
-            )
-        }
-    }
-
-    return bm
-}
-
-async function readFlatFileResponse(res, bm) {
-    const isHTML = res.headers.get('content-type') === 'text/html'
-    const buffers = []
-
-    for await (const chunk of browserReadableStreamToIt(res.body)) {
-        if (!bm.ttfb) {
-            bm.ttfb = new Date()
-        }
-        bm.transferSize += chunk.length
-
-        if (isHTML) {
-            buffers.push(chunk)
-        }
-
-        if (bm.transferSize > maxDownloadSize) {
-            break
-        }
-    }
-
-    if (isHTML) {
-        const text = await (new Blob(buffers)).text()
-
-        const str1 = 'A directory of content-addressed files hosted on IPFS'
-        const str2 = 'A directory of files hosted on the distributed, decentralized web using IPFS'
-        bm.isDir = text.includes(str1) || text.includes(str2)
-    } else {
-        bm.isDir = false
-    }
-}
-
-async function readCARResponse(res, bm) {
-    async function* metricsStream(stream) {
-        for await (const chunk of browserReadableStreamToIt(stream)) {
-            bm.transferSize += chunk.length
-
-            if (bm.transferSize > maxDownloadSize) {
-                break
-            }
-            yield chunk
-        }
-    }
-    const cidPath = (new URL(res.url)).pathname.replace('/ipfs/', '')
-    const itr = metricsStream(res.body)
-
-    try {
-        for await (const _ of extractVerifiedContent(cidPath, itr)) { }
-    } catch (err) {
-        bm.verificationError = err.message
-    }
-}
-
-function createTraceParent(traceId) {
-    const span = opentelemetry.trace.getTracer('default').startSpan('request')
-
-    const version = '00'
-    const { spanId } = span.spanContext()
-    const traceFlag = '01'
-
-    const traceParent = `${version}-${traceId}-${spanId}-${traceFlag}`
-    return traceParent
-}
-
-// Emulates the log that a retrieval client would send.
-function createBandwidthLog(bm) {
-    return {
-        nodeId: bm.nodeId,
-        cacheHit: bm.cacheStatus === 'HIT',
-        url: bm.url,
-        startTime: bm.startTime,
-        numBytesSent: bm.transferSize,
-        range: null,
-        requestDurationSec: (bm.endTime - bm.startTime) / 1000,
-        requestId: bm.transferId,
-        httpStatusCode: bm.httpStatusCode,
-        httpProtocol: bm.httpProtocol,
-        error: bm.ifError ?? bm.verificationError,
-        ttfbMs: bm.ttfb ? (bm.ttfb - bm.startTime) : null
-    }
-}
-
-async function reportBandwidthLogs(opts, benchmarks) {
-    const bandwidthLogs = benchmarks
-        .filter(bm => bm.service === 'saturn' && !bm.isFromBrowserCache)
-        .map(createBandwidthLog)
-    console.log('Reporting bandwidth logs...')
-    console.log(bandwidthLogs)
-
-    if (bandwidthLogs.length) {
-        await fetch(opts.logIngestorUrl, {
-            method: 'POST',
-            body: JSON.stringify({ bandwidthLogs, logSender: 'voyager' }),
-        })
-    }
-
-    console.log('Bandwidth logs submitted')
 }
 
 function getWeightedRandomCid(cids) {
@@ -270,25 +110,4 @@ function getWeightedRandomCid(cids) {
     const cid = cidPath.split('?')[0]?.split('/')[2]
 
     return { cid, cidPath }
-}
-
-// https://github.com/achingbrain/it/blob/master/packages/browser-readablestream-to-it/index.js
-async function* browserReadableStreamToIt(stream, options = {}) {
-    const reader = stream.getReader()
-
-    try {
-        while (true) {
-            const result = await reader.read()
-            if (result.done) {
-                return
-            }
-            yield result.value
-        }
-    } finally {
-        if (options.preventCancel !== true) {
-            reader.cancel()
-        }
-
-        reader.releaseLock()
-    }
 }
