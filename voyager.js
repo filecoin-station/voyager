@@ -76,7 +76,7 @@ export async function runBenchmark(saturn) {
 }
 
 async function sendSaturnRequest(saturn, cidPath) {
-    let { cidPath } = getWeightedRandomCid(cids)
+    cidPath = cidPath.replace('/ipfs/', '')
 
     const controller = new AbortController()
     const fetchOpts = {
