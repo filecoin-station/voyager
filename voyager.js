@@ -1,9 +1,6 @@
 import { BasicTracerProvider } from './vendor/opentelemetry/sdk-trace-base/out.js'
 import { Saturn, indexedDbStorage } from './vendor/saturn-js-client/dist/strn.js'
-import { ActivityState } from './lib/activity-state.js'
 import { cids as gatewayCids } from './lib/ipfs-gateway-cids.js'
-
-const activityState = new ActivityState()
 
 // Example: https://ipfs.io/ipfs/${cid}
 const prodSaturnOrigin = 'https://l1s.saturn.ms'
@@ -45,28 +42,30 @@ const testSaturn = new Saturn({
 })
 
 new BasicTracerProvider().register()
+Zinnia.activity.info('Voyager benchmarking started')
 
 export async function runSaturnBenchmarkInterval() {
     const random = Math.random()
-    try {
-        if (random <= prodOpts.sampleRate) {
-            console.log('Running prod benchmark...')
+    if (random <= prodOpts.sampleRate) {
+        console.log('Running prod benchmark...')
+        try {
             await runBenchmark(prodSaturn)
-            Zinnia.jobCompleted()
+        } catch (err) {
+            console.error(err)
         }
-        if (random <= testOpts.sampleRate) {
-            console.log('Running test benchmark...')
-            await runBenchmark(testSaturn)
-            Zinnia.jobCompleted()
-        }
-        activityState.onHealthy()
-    } catch (err) {
-        console.error(err)
-        activityState.onError()
-    } finally {
-        console.log('Sleeping for 60s...')
-        setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
+        Zinnia.jobCompleted()
     }
+    if (random <= testOpts.sampleRate) {
+        console.log('Running test benchmark...')
+        try {
+            await runBenchmark(testSaturn)
+        } catch (err) {
+            console.error(err)
+        }
+        Zinnia.jobCompleted()
+    }
+    console.log('Sleeping for 60s...')
+    setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
 }
 
 export async function runBenchmark(saturn) {
