@@ -50,6 +50,7 @@ export async function runSaturnBenchmarkInterval() {
         console.log('Running prod benchmark...')
         try {
             await runBenchmark(prodSaturn)
+            console.log('Prod benchmark successful!')
         } catch (err) {
             console.error(err)
         }
@@ -59,6 +60,7 @@ export async function runSaturnBenchmarkInterval() {
         console.log('Running test benchmark...')
         try {
             await runBenchmark(testSaturn)
+            console.log('Test benchmark successful!')
         } catch (err) {
             console.error(err)
         }
