@@ -90,7 +90,7 @@ async function runSaturnBenchmark() {
 async function getPublicIPv4Address () {
     // TODO Replace with Voyager API once available
     const res = await fetch(`https://api.filspark.com/inspect-request`)
-    const { cloudfareAddr: ip } = await res.json()
+    const { cloudflareAddr: ip } = await res.json()
     return ip
 }
 
