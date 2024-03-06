@@ -57,30 +57,34 @@ export async function runSaturnBenchmarkInterval() {
     if (runningOnSaturnNode) {
         console.log('Running on Saturn host, skipping benchmark')
     } else {
-        const random = Math.random()
-        if (random <= prodOpts.sampleRate) {
-            console.log('Running prod benchmark...')
-            try {
-                await runBenchmark(prodSaturn)
-                console.log('Prod benchmark successful!')
-            } catch (err) {
-                console.error(err)
-            }
-            Zinnia.jobCompleted()
-        }
-        if (random <= testOpts.sampleRate) {
-            console.log('Running test benchmark...')
-            try {
-                await runBenchmark(testSaturn)
-                console.log('Test benchmark successful!')
-            } catch (err) {
-                console.error(err)
-            }
-            Zinnia.jobCompleted()
-        }
+        await runSaturnBenchmark()
     }
     console.log('Sleeping for 60s...')
     setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
+}
+
+async function runSaturnBenchmark() {
+    const random = Math.random()
+    if (random <= prodOpts.sampleRate) {
+        console.log('Running prod benchmark...')
+        try {
+            await runBenchmark(prodSaturn)
+            console.log('Prod benchmark successful!')
+        } catch (err) {
+            console.error(err)
+        }
+        Zinnia.jobCompleted()
+    }
+    if (random <= testOpts.sampleRate) {
+        console.log('Running test benchmark...')
+        try {
+            await runBenchmark(testSaturn)
+            console.log('Test benchmark successful!')
+        } catch (err) {
+            console.error(err)
+        }
+        Zinnia.jobCompleted()
+    }
 }
 
 async function getPublicIPv4Address () {
