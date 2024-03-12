@@ -45,6 +45,25 @@ new BasicTracerProvider().register()
 Zinnia.activity.info('Voyager benchmarking started')
 
 export async function runSaturnBenchmarkInterval() {
+    let runningOnSaturnNode = false
+    try {
+        runningOnSaturnNode = await isRunningOnSaturnNode()
+    } catch (err) {
+        console.error(
+            'Could not check if running on Saturn node',
+            { cause: err }
+        )
+    }
+    if (runningOnSaturnNode) {
+        console.log('Running on Saturn host, skipping benchmark')
+    } else {
+        await runSaturnBenchmark()
+    }
+    console.log('Sleeping for 60s...')
+    setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
+}
+
+async function runSaturnBenchmark() {
     const random = Math.random()
     if (random <= prodOpts.sampleRate) {
         console.log('Running prod benchmark...')
@@ -66,8 +85,26 @@ export async function runSaturnBenchmarkInterval() {
         }
         Zinnia.jobCompleted()
     }
-    console.log('Sleeping for 60s...')
-    setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
+}
+
+async function getPublicIPv4Address () {
+    // TODO Replace with Voyager API once available
+    const res = await fetch(`https://api.filspark.com/inspect-request`)
+    const { cloudflareAddr: ip } = await res.json()
+    return ip
+}
+
+async function isRunningOnSaturnNode () {
+    const ip = await getPublicIPv4Address()
+    const subdomain = ip.replaceAll('.', '-')
+    try {
+        await fetch(`https://${subdomain}.l1s.saturn.ms/`, {
+            redirect: 'manual'
+        })
+        return true
+    } catch {
+        return false
+    }
 }
 
 export async function runBenchmark(saturn) {
