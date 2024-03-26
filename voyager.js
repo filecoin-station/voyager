@@ -88,8 +88,7 @@ async function runSaturnBenchmark() {
 }
 
 async function getPublicIPv4Address () {
-    // TODO Replace with Voyager API once available
-    const res = await fetch(`https://api.filspark.com/inspect-request`)
+    const res = await fetch('https://voyager.filstation.app/inspect-request')
     const { cloudflareAddr: ip } = await res.json()
     return ip
 }
