@@ -13,6 +13,8 @@ $ zinnia run main.js
 
 ```bash
 $ ./release.sh <SEMVER>
+$ # Example
+$ ./release.sh 1.0.0
 ```
 
 Use GitHub's changelog feature to fill out the release message.
