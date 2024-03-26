@@ -59,8 +59,8 @@ export async function runSaturnBenchmarkInterval() {
     } else {
         await runSaturnBenchmark()
     }
-    console.log('Sleeping for 60s...')
-    setTimeout(runSaturnBenchmarkInterval, 1000 * 60)
+    console.log('Sleeping for 30s...')
+    setTimeout(runSaturnBenchmarkInterval, 1000 * 30)
 }
 
 async function runSaturnBenchmark() {
