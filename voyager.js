@@ -20,6 +20,48 @@ const testOpts = {
     sampleRate: 0.01
 }
 
+async function assertOkResponse (res, errorMsg) {
+    if (res.ok) return
+
+    let body
+    try {
+      body = await res.text()
+    } catch {}
+    const err = new Error(`${errorMsg ?? 'Fetch failed'} (${res.status}): ${body}`)
+    err.statusCode = res.status
+    err.serverMessage = body
+    throw err
+}
+
+const onReportLogs = async logs => {
+    console.log(`Submitting ${logs.length} measurements...`)
+    for (const log of logs) {
+        const payload = {
+            cid: log.url.href.replace(log.url.origin, ''),
+            endAt: new Date(log.startTime.getTime() + (log.requestDurationSec * 1000)),
+            statusCode: log.httpStatusCode,
+            carTooLarge: log.error === 'The signal has been aborted',
+            zinniaVersion: Zinnia.versions.zinnia,
+            participantAddress: Zinnia.walletAddress
+        }
+        console.log('%o', payload)
+        const res = await fetch('https://voyager.filstation.app/measurements', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            signal: AbortSignal.timeout(10_000)
+        })
+        try {
+            await assertOkResponse(res, 'Failed to submit measurement')
+            console.log('Measurement submitted')
+        } catch (err) {
+            console.error(err)
+        }
+    }
+}
+
 const prodSaturn = new Saturn({
     cdnURL: prodOpts.saturnOrigin,
     logURL: prodOpts.logIngestorUrl,
@@ -27,7 +69,8 @@ const prodSaturn = new Saturn({
     storage: indexedDbStorage(),
     logSender: 'voyager',
     experimental: true,
-    clientKey: 'c11dbbe1-a007-4e59-86d5-fc67dc8f317c'
+    clientKey: 'c11dbbe1-a007-4e59-86d5-fc67dc8f317c',
+    onReportLogs
 })
 
 // test should use default memory storage so it doesn't overwrite prod storage.
@@ -39,6 +82,7 @@ const testSaturn = new Saturn({
     logSender: 'voyager',
     experimental: true,
     clientKey: 'c536c9b9-81a1-4a98-8b05-61341e5dd77e',
+    onReportLogs
 })
 
 new BasicTracerProvider().register()
