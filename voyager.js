@@ -95,7 +95,7 @@ export async function runSaturnBenchmarkInterval() {
     } catch (err) {
         console.error(
             'Could not check if running on Saturn node',
-            { cause: err }
+            { cause: err.message }
         )
     }
     if (runningOnSaturnNode) {
@@ -154,7 +154,21 @@ async function isRunningOnSaturnNode () {
 export async function runBenchmark(saturn) {
     const { cidPath } = getWeightedRandomCid(gatewayCids)
     console.log(`Testing ${cidPath}...`)
-    return sendSaturnRequest(saturn, cidPath)
+    try {
+        await sendSaturnRequest(saturn, cidPath)
+    } catch (err) {
+        if (
+            err.message.includes('Non-base58btc character') ||
+            err.message.includes('Non-base32 character') ||
+            err.message.includes('file does not exist') ||
+            err.message.includes('Non OK response received') ||
+            err.message.includes('The signal has been aborted')
+        ) {
+            console.error('Failed to fetch content', { cause: err.message })
+            return
+        }
+        throw err
+    }
 }
 
 async function sendSaturnRequest(saturn, cidPath) {
