@@ -1,5 +1,5 @@
 import { BasicTracerProvider } from './vendor/opentelemetry/sdk-trace-base/out.js'
-import { Saturn, indexedDbStorage } from './vendor/saturn-js-client/dist/strn.js'
+import { Saturn, indexedDbStorage } from './vendor/saturn-js-client/dist/strn.min.js'
 import { cids as gatewayCids } from './lib/ipfs-gateway-cids.js'
 
 // Example: https://ipfs.io/ipfs/${cid}
