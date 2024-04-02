@@ -133,7 +133,8 @@ async function runSaturnBenchmark() {
 }
 
 async function getPublicIPv4Address () {
-    const res = await fetch('https://voyager.filstation.app/inspect-request')
+    // FIXME: Use voyager API
+    const res = await fetch('https://api.filspark.com/inspect-request')
     await assertOkResponse(res, 'Failed to get public IP address')
     const { cloudflareAddr: ip } = await res.json()
     return ip
