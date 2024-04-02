@@ -162,7 +162,8 @@ export async function runBenchmark(saturn) {
             err.message.includes('Non-base32 character') ||
             err.message.includes('file does not exist') ||
             err.message.includes('Non OK response received') ||
-            err.message.includes('The signal has been aborted')
+            err.message.includes('The signal has been aborted') ||
+            /received [^ ]+ instead/.test(err.message)
         ) {
             console.error('Failed to fetch content', { cause: err.message })
             return
