@@ -89,7 +89,7 @@ new BasicTracerProvider().register()
 Zinnia.activity.info('Voyager benchmarking started')
 
 export async function runSaturnBenchmarkInterval() {
-    let runningOnSaturnNode = false
+    let runningOnSaturnNode = true
     try {
         runningOnSaturnNode = await isRunningOnSaturnNode()
     } catch (err) {
