@@ -163,7 +163,8 @@ export async function runBenchmark(saturn) {
             err.message.includes('file does not exist') ||
             err.message.includes('Non OK response received') ||
             err.message.includes('The signal has been aborted') ||
-            /received [^ ]+ instead/.test(err.message)
+            /received [^ ]+ instead/.test(err.message) ||
+            err.message.includes('CAR file has no more blocks')
         ) {
             console.error('Failed to fetch content', { cause: err.message })
             return
