@@ -88,7 +88,15 @@ const testSaturn = new Saturn({
 new BasicTracerProvider().register()
 Zinnia.activity.info('Voyager benchmarking started')
 
-export async function runSaturnBenchmarkInterval() {
+export async function runSaturnBenchmarkLoop() {
+    while (true) {
+        await runSaturnBenchmark()
+        // console.log('Sleeping for 100ms...')
+        // await sleep(100)
+    }
+}
+
+async function runSaturnBenchmark() {
     let runningOnSaturnNode = true
     try {
         runningOnSaturnNode = await isRunningOnSaturnNode()
@@ -100,15 +108,9 @@ export async function runSaturnBenchmarkInterval() {
     }
     if (runningOnSaturnNode) {
         console.log('Running on Saturn host, skipping benchmark')
-    } else {
-        await runSaturnBenchmark()
+        return
     }
-    // console.log('Sleeping for 1s...')
-    // setTimeout(runSaturnBenchmarkInterval, 1000)
-    setTimeout(runSaturnBenchmarkInterval)
-}
 
-async function runSaturnBenchmark() {
     const random = Math.random()
     if (random <= prodOpts.sampleRate) {
         console.log('Running prod benchmark...')

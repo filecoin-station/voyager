@@ -1,3 +1,3 @@
-import { runSaturnBenchmarkInterval } from './voyager.js'
+import { runSaturnBenchmarkLoop } from './voyager.js'
 
-await runSaturnBenchmarkInterval()
+await runSaturnBenchmarkLoop()
