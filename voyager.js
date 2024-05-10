@@ -91,8 +91,8 @@ Zinnia.activity.info('Voyager benchmarking started')
 export async function runSaturnBenchmarkLoop() {
     while (true) {
         await runSaturnBenchmark()
-        // console.log('Sleeping for 100ms...')
-        // await sleep(100)
+        console.log('Sleeping for 5000ms...')
+        await sleep(5_000)
     }
 }
 
