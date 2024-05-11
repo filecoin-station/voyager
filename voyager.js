@@ -85,6 +85,8 @@ const testSaturn = new Saturn({
     onReportLogs
 })
 
+const sleep = dt => new Promise((resolve => setTimeout(resolve, dt)))
+
 new BasicTracerProvider().register()
 Zinnia.activity.info('Voyager benchmarking started')
 
