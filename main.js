@@ -1,3 +1,6 @@
-import { runSaturnBenchmarkLoop } from './voyager.js'
+// The Voyager program has ended. Thank you all for participating! We're
+// going to retroactively reward all participants. Stay tuned!
 
-await runSaturnBenchmarkLoop()
+// import { runSaturnBenchmarkLoop } from './voyager.js'
+
+// await runSaturnBenchmarkLoop()
